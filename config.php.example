@@ -1,0 +1,75 @@
+<?php
+/**
+ * Copy this file to config.php (same directory) and fill in real values.
+ * config.php must NOT be web-reachable and should never be committed
+ * to version control (it's already listed in .gitignore).
+ */
+
+// --- Database ---
+define('DB_HOST', '127.0.0.1');
+define('DB_NAME', 'university_outreach');
+define('DB_USER', 'outreach_app');
+define('DB_PASS', 'CHANGE_ME');
+
+// --- App mode: 'staging' or 'production' ---
+// In staging mode, recipients are pulled from the staging_contacts table
+// instead of university_contacts -- so you can test the whole flow,
+// including a real send through whichever MAIL_DRIVER is configured,
+// without any risk of it reaching a real recipient. Nothing else about
+// the app changes between modes; the university list, templates, and
+// relationships are shared. Set this back to 'production' before
+// treating any submission as real.
+define('APP_MODE', 'staging');
+
+// --- Mail driver: 'mailgun', 'smtp', or 'switchboard' ---
+// Set this to whichever sending method you actually have available.
+define('MAIL_DRIVER', 'mailgun');
+
+// -- Mailgun HTTP API (used when MAIL_DRIVER = 'mailgun') --
+// From your Mailgun dashboard: Sending > Domain settings for your
+// verified sending domain, and Settings > API Keys for your private key.
+define('MAILGUN_API_KEY', 'key-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx');
+define('MAILGUN_DOMAIN', 'mg.yourdomain.org');
+// Use https://api.eu.mailgun.net/v3 instead if your Mailgun domain is
+// registered in the EU region.
+define('MAILGUN_API_BASE_URL', 'https://api.mailgun.net/v3');
+
+// -- SMTP relay via PHPMailer (used when MAIL_DRIVER = 'smtp') --
+// Requires PHPMailer to be installed: from the app root,
+//   composer require phpmailer/phpmailer
+// (the install script offers to do this for you).
+define('SMTP_HOST', 'smtp.yourprovider.com');
+define('SMTP_PORT', 587);
+define('SMTP_USER', 'your-smtp-username');
+define('SMTP_PASS', 'CHANGE_ME');
+define('SMTP_SECURE', 'tls'); // 'tls' or 'ssl'
+
+// -- Switchboard (used when MAIL_DRIVER = 'switchboard') --
+// NOT YET WIRED UP -- see includes/switchboard.php. Setting MAIL_DRIVER
+// to 'switchboard' right now will fail cleanly (logged per recipient)
+// rather than crash, but nothing will actually send until that file is
+// filled in with real API details.
+define('SWITCHBOARD_API_KEY', 'CHANGE_ME');
+define('SWITCHBOARD_API_BASE_URL', 'CHANGE_ME');
+
+// -- Common to all drivers --
+define('MAIL_FROM_ADDRESS', 'outreach@yourdomain.org');
+define('MAIL_FROM_NAME', 'Your Organization Outreach');
+// Fixed Reply-To for every outgoing message -- NOT the submitter's own
+// email. Replies land here instead of scattering across individual
+// senders' inboxes.
+define('MAIL_REPLY_TO_ADDRESS', 'replies@yourdomain.org');
+define('MAIL_REPLY_TO_NAME', 'Your Organization');
+define('MAIL_CC_SENDER', true); // CC the visitor on the mail sent on their behalf
+
+// --- App ---
+define('APP_BASE_URL', 'https://yourdomain.org/outreach');
+define('SESSION_NAME', 'outreach_session');
+
+// --- Basic abuse throttling ---
+define('MAX_SUBMISSIONS_PER_HOUR_PER_EMAIL', 3);
+define('MAX_SUBMISSIONS_PER_HOUR_PER_IP', 10);
+
+// --- Error reporting: keep OFF in production ---
+error_reporting(0);
+ini_set('display_errors', '0');
