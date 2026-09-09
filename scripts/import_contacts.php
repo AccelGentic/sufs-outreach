@@ -89,7 +89,7 @@ while (($row = fgetcsv($fh)) !== false) {
         }
     }
 
-    $insertContact->execute([$universityIdCache[$collegeUni], $name, $role, $email]);
+    $insertContact->execute([$universityIdCache[$collegeUni], $name, $role, $email, $source]);
     $imported++;
 }
 
