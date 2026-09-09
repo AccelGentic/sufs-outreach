@@ -21,7 +21,10 @@ sudo apt-get install -y apache2 mariadb-server \
   php php-mysql php-mbstring php-xml php-curl libapache2-mod-php unzip curl
 
 echo "== Enabling required Apache modules =="
-sudo a2enmod rewrite
+# headers and ssl matter as much as rewrite: the vhost examples use
+# Header and SSL* directives, and Apache treats a directive from an
+# unloaded module as a fatal config error rather than ignoring it.
+sudo a2enmod rewrite headers ssl
 sudo systemctl enable apache2 mariadb
 sudo systemctl restart apache2 mariadb
 

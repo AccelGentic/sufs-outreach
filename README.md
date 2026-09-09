@@ -267,13 +267,22 @@ driver.
    for you), or issue the certificate without touching your config and
    use the ready-made HTTPS vhost:
    ```
+   # Enable the modules FIRST: Apache treats a directive from a module
+   # it hasn't loaded as a fatal error and refuses to start, so a
+   # missing mod_headers means "Invalid command 'Header'" and a site
+   # that won't come up.
    sudo a2enmod ssl headers rewrite
+   apache2ctl -M | grep -E 'ssl|headers|rewrite'   # confirm all three
    sudo certbot certonly --webroot -w .../public -d outreach.yourdomain.org
    sudo cp scripts/apache-vhost-ssl-example.conf \
      /etc/apache2/sites-available/university-outreach.conf
    # edit ServerName / certificate paths, then:
    sudo apache2ctl configtest && sudo systemctl reload apache2
    sudo certbot renew --dry-run
+   # Confirm the security headers actually arrive (the vhost wraps them
+   # in <IfModule>, so a forgotten a2enmod fails quietly rather than
+   # loudly):
+   curl -sI https://outreach.yourdomain.org | grep -iE 'strict-transport|x-frame|nosniff'
    ```
 6. Import your contact list:
    ```
