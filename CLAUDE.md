@@ -20,6 +20,12 @@ git bundle create /path/to/scratch/<short-name>.bundle <branch>
 
 # 3. Verify it actually applies, from the current origin/main, before
 #    handing it over. Never skip this.
+#
+#    Fast-forward the local main first: cloning "." resolves origin/main
+#    in the clone to this repo's LOCAL main, so a stale local ref makes
+#    the verification diff silently wrong (it will show already-merged
+#    commits as if they were new).
+git branch -f main origin/main
 git clone -q . /tmp/verify -n
 cd /tmp/verify && git checkout -q origin/main
 git fetch -q /path/to/scratch/<short-name>.bundle <branch>:check
