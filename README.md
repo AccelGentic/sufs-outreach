@@ -288,8 +288,12 @@ driver.
    ```
    php scripts/import_contacts.php /path/to/contacts.csv
    ```
-   Expects a header row with columns `college/uni,name,role,email` (column
-   names are normalized, so `College/Uni`, `college_uni`, etc. all match).
+   Expects a header row with columns `college/uni,name,role,email,source`
+   (column names are normalized, so `College/Uni`, `college_uni`, etc.
+   all match). `source` records which list or roster a contact came
+   from. Safe to re-run -- contacts are matched on institution plus
+   email and updated in place rather than duplicated. See "Duplicate
+   contacts" above if you are upgrading a database that predates that.
 7. Set an admin password so you can edit the email text from a browser:
    ```
    php scripts/make_admin_hash.php
@@ -338,9 +342,34 @@ before you run it with `--apply`:
   the whole run back rather than leaving a half-merged state.
 
 Take a backup first; the dry-run output reminds you with the exact
-`mysqldump` command. To stop duplicates recurring, add
-`UNIQUE KEY (university_id, email)` to the table and have the importer
-use `INSERT ... ON DUPLICATE KEY UPDATE`.
+`mysqldump` command.
+
+### Stopping them coming back
+
+Fresh installs get this from `sql/schema.sql` already. On an existing
+database, **clean up first, then add the constraint** -- in that order:
+
+```
+php scripts/dedupe_contacts.php --apply
+mysql university_outreach < sql/migrations/002_contacts_source.sql
+mysql university_outreach < sql/migrations/003_contacts_unique_email.sql
+```
+
+Adding the unique key to a table that still holds duplicates fails, and
+the error names only the first collision it meets -- so you would be
+fixing them one error at a time. The dedupe script clears them all in
+one pass.
+
+With `uniq_contact_email (university_id, email)` in place,
+`import_contacts.php` upserts against it: re-running an import, or
+importing two lists that overlap, now refreshes each contact instead of
+adding them again. It reports how many rows were new versus updated.
+
+One thing it deliberately will not do is change `active`. A re-import
+can correct someone's name, role or source, but it cannot set them back
+to active -- otherwise a routine roster refresh would quietly resume
+mail to everyone who had asked you to stop. Reactivating a contact stays
+a deliberate act.
 
 ## Behind Cloudflare (or any other proxy)
 

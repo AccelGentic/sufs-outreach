@@ -17,17 +17,34 @@ CREATE TABLE universities (
 
 -- Contacts at each university. Admin-managed only (via import_contacts.php
 -- or direct SQL) -- never editable from the public form.
--- Source fields per your data: college/uni, name, role, email
+-- Source fields per your data: college/uni, name, role, email, source
+--
+-- `source` records where a contact came from -- which list, roster or
+-- import the row originated in. import_contacts.php requires the column
+-- in its CSV and always writes a string (empty when the cell is blank),
+-- hence NOT NULL DEFAULT '' rather than a nullable column: one
+-- representation of "no source recorded" instead of both '' and NULL.
+--
+-- uniq_contact_email is what stops the same person being added twice by
+-- overlapping imports; import_contacts.php upserts against it. The
+-- comparison follows the column's utf8mb4_unicode_ci collation, so it
+-- is case-insensitive and ignores trailing spaces -- 'Provost@x.edu'
+-- and 'provost@x.edu' are the same contact, which is the intent, since
+-- they are the same mailbox. The key is (university_id, email), not
+-- email alone: one person can legitimately be a contact at two
+-- institutions. 4 + 1020 bytes, well inside InnoDB's 3072-byte limit.
 CREATE TABLE university_contacts (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     university_id INT UNSIGNED NOT NULL,
     name VARCHAR(255) NOT NULL,
     role VARCHAR(255) NOT NULL,
     email VARCHAR(255) NOT NULL,
+    source VARCHAR(255) NOT NULL DEFAULT '',
     active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT fk_contact_university FOREIGN KEY (university_id)
         REFERENCES universities(id) ON DELETE CASCADE,
+    UNIQUE KEY uniq_contact_email (university_id, email),
     KEY idx_university_active (university_id, active)
 ) ENGINE=InnoDB;
 

@@ -9,6 +9,12 @@
  *   college/uni, name, role, email, source
  * (column names are normalized, so "College/Uni", "college_uni", etc.
  * all match).
+ *
+ * Safe to re-run: contacts are matched on (university_id, email) and
+ * updated in place rather than duplicated, provided the unique key from
+ * sql/migrations/003_contacts_unique_email.sql is in place. If you are
+ * adding that key to a database that already has duplicates, run
+ * scripts/dedupe_contacts.php --apply first.
  */
 
 if (PHP_SAPI !== 'cli') {
@@ -40,13 +46,38 @@ if (!$path || !is_readable($path)) {
 $db = get_db();
 
 $findUniversity   = $db->prepare('SELECT id FROM universities WHERE name = ?');
+$findContact      = $db->prepare(
+    'SELECT id FROM university_contacts WHERE university_id = ? AND email = ?'
+);
 $insertUniversity = $db->prepare('INSERT INTO universities (name) VALUES (?)');
+/**
+ * Upsert against uniq_contact_email (university_id, email), so
+ * re-running an import -- or importing two lists that overlap --
+ * refreshes a contact instead of adding them a second time and mailing
+ * them twice.
+ *
+ * `active` is deliberately absent from the UPDATE list. It is how this
+ * app records "stop emailing this person", so letting an import set it
+ * back to 1 would silently resume mail to someone who opted out. A
+ * re-import can correct a name, role or source; it cannot un-unsubscribe
+ * anyone. Reactivating is a deliberate act, done by hand.
+ *
+ * Needs the unique key to exist -- see
+ * sql/migrations/003_contacts_unique_email.sql. Without it this
+ * statement is a plain INSERT and duplicates come back.
+ */
 $insertContact    = $db->prepare(
-    'INSERT INTO university_contacts (university_id, name, role, email, source) VALUES (?, ?, ?, ?, ?)'
+    'INSERT INTO university_contacts (university_id, name, role, email, source)
+     VALUES (?, ?, ?, ?, ?)
+     ON DUPLICATE KEY UPDATE
+        name   = VALUES(name),
+        role   = VALUES(role),
+        source = VALUES(source)'
 );
 
 $universityIdCache = [];
 $imported = 0;
+$updated  = 0;
 $skipped  = 0;
 
 $fh = fopen($path, 'r');
@@ -89,10 +120,26 @@ while (($row = fgetcsv($fh)) !== false) {
         }
     }
 
+    // Look the contact up first purely so the summary can say whether
+    // each row was new or a refresh. Reading affected-rows back from the
+    // upsert instead would be one query fewer, but its 1/2/0 convention
+    // is specific to MySQL's driver, and a miscounted summary that
+    // reports every refreshed contact as newly imported is exactly the
+    // reassurance you don't want when checking whether a re-import
+    // behaved. This matches on the same (university_id, email) the
+    // unique key does, under the same collation.
+    $findContact->execute([$universityIdCache[$collegeUni], $email]);
+    $isExisting = (bool) $findContact->fetchColumn();
+
     $insertContact->execute([$universityIdCache[$collegeUni], $name, $role, $email, $source]);
-    $imported++;
+
+    if ($isExisting) {
+        $updated++;
+    } else {
+        $imported++;
+    }
 }
 
 fclose($fh);
 
-echo "Imported: $imported, Skipped: $skipped\n";
+echo "Imported: $imported new, Updated: $updated existing, Skipped: $skipped\n";
