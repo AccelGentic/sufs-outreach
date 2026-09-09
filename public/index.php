@@ -42,6 +42,7 @@ $universitiesJson = json_encode(
 </head>
 <body>
 <?php require __DIR__ . '/../includes/staging_banner.php'; ?>
+<?php require __DIR__ . '/../includes/site_header.php'; ?>
 <main class="card">
   <h1>Contact an Educational Institution</h1>
   <p>Fill out your information below. On the next step you'll be able to review and edit your message before anything is sent.</p>

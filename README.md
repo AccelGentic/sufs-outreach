@@ -406,6 +406,9 @@ Also worth knowing:
   staging_contacts, templates, relationships, submissions, send log) +
   starter template and relationship rows.
 - `config.php.example` -- copy to `config.php` and fill in.
+- `includes/site_header.php` -- the site header (logo centred, primary
+  nav to its left) shared by the visitor-facing pages. The Blog and
+  Contact Us links are placeholders pointing at `#`.
 - `includes/` -- DB connection, CSRF helpers, shared functions, admin
   authentication (`admin_auth.php`), template read/write for the admin
   editor (`template_store.php`), and the mail drivers (`mailgun.php`,

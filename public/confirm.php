@@ -22,6 +22,7 @@ if (!$confirm) {
 </head>
 <body>
 <?php require __DIR__ . '/../includes/staging_banner.php'; ?>
+<?php require __DIR__ . '/../includes/site_header.php'; ?>
 <main class="card">
   <h1>Thank you!</h1>
   <?php if (current_app_mode() === 'staging'): ?>

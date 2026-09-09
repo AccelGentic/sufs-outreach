@@ -41,6 +41,7 @@ unset($_SESSION['send_errors']);
 </head>
 <body>
 <?php require __DIR__ . '/../includes/staging_banner.php'; ?>
+<?php require __DIR__ . '/../includes/site_header.php'; ?>
 <main class="card">
   <h1>Review Your Message</h1>
   <p>
