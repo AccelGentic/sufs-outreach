@@ -6,7 +6,7 @@
  *   php import_contacts.php /path/to/contacts.csv
  *
  * Expects a CSV with a header row containing (in any order):
- *   college/uni, name, role, email
+ *   college/uni, name, role, email, source
  * (column names are normalized, so "College/Uni", "college_uni", etc.
  * all match).
  */
@@ -42,7 +42,7 @@ $db = get_db();
 $findUniversity   = $db->prepare('SELECT id FROM universities WHERE name = ?');
 $insertUniversity = $db->prepare('INSERT INTO universities (name) VALUES (?)');
 $insertContact    = $db->prepare(
-    'INSERT INTO university_contacts (university_id, name, role, email) VALUES (?, ?, ?, ?)'
+    'INSERT INTO university_contacts (university_id, name, role, email, source) VALUES (?, ?, ?, ?, ?)'
 );
 
 $universityIdCache = [];
@@ -58,7 +58,7 @@ if ($header === false) {
 $header = array_map('normalize_header', $header);
 $col = array_flip($header); // column name -> index
 
-$requiredCols = ['college_uni', 'name', 'role', 'email'];
+$requiredCols = ['college_uni', 'name', 'role', 'email', 'source'];
 foreach ($requiredCols as $rc) {
     if (!isset($col[$rc])) {
         fwrite(STDERR, "Missing expected column '$rc' in CSV header (found: " . implode(', ', $header) . ")\n");
@@ -71,6 +71,7 @@ while (($row = fgetcsv($fh)) !== false) {
     $name       = csv_val($row, $col, 'name');
     $role       = csv_val($row, $col, 'role');
     $email      = csv_val($row, $col, 'email');
+    $source	= csv_val($row, $col, 'source');
 
     if ($collegeUni === '' || $name === '' || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
         $skipped++;
