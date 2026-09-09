@@ -261,8 +261,20 @@ driver.
 4. Copy `config.php.example` to `config.php` (in the app root, *not* in
    `public/`) and fill in your DB password, `MAIL_DRIVER`, and the
    matching mail settings below it -- see "Sending mail" above.
-5. Get a TLS certificate (e.g. `sudo certbot --apache`) before this goes
-   live -- the form collects personal data.
+5. Get a TLS certificate before this goes live -- the form collects
+   personal data, and the admin password crosses the wire on every
+   sign-in. Either `sudo certbot --apache` (certbot rewrites the vhost
+   for you), or issue the certificate without touching your config and
+   use the ready-made HTTPS vhost:
+   ```
+   sudo a2enmod ssl headers rewrite
+   sudo certbot certonly --webroot -w .../public -d outreach.yourdomain.org
+   sudo cp scripts/apache-vhost-ssl-example.conf \
+     /etc/apache2/sites-available/university-outreach.conf
+   # edit ServerName / certificate paths, then:
+   sudo apache2ctl configtest && sudo systemctl reload apache2
+   sudo certbot renew --dry-run
+   ```
 6. Import your contact list:
    ```
    php scripts/import_contacts.php /path/to/contacts.csv
@@ -317,4 +329,8 @@ driver.
 - `scripts/import_contacts.php` -- CLI CSV importer.
 - `scripts/make_admin_hash.php` -- CLI helper that generates the
   `ADMIN_PASSWORD_HASH` line for `config.php`.
-- `scripts/apache-vhost-example.conf` -- example vhost.
+- `scripts/apache-vhost-example.conf` -- example vhost, plain HTTP, for
+  bringing a host up before certificates exist.
+- `scripts/apache-vhost-ssl-example.conf` -- the HTTPS vhost to run in
+  production: port 80 redirect (with the ACME challenge path left
+  reachable so renewals keep working), TLS, HSTS, and security headers.

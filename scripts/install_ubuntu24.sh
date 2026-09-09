@@ -71,10 +71,15 @@ cat <<EOM
      DB_PASS = '${DB_PASS}'
    plus MAIL_DRIVER ('mailgun' or 'smtp') and the matching credentials
    below it, and your From address.
-2. Create the Apache vhost (see scripts/apache-vhost-example.conf),
-   pointing DocumentRoot at ${APP_DIR}/public, then:
-     sudo a2ensite university-outreach.conf && sudo systemctl reload apache2
-     sudo certbot --apache -d outreach.yourdomain.org
+2. Create the Apache vhost, pointing DocumentRoot at ${APP_DIR}/public:
+     - scripts/apache-vhost-example.conf     plain HTTP, to get started
+     - scripts/apache-vhost-ssl-example.conf full HTTPS setup (port 80
+       redirect + TLS + security headers), for production
+   then:
+     sudo a2enmod ssl headers rewrite
+     sudo a2ensite university-outreach.conf
+     sudo apache2ctl configtest && sudo systemctl reload apache2
+     sudo certbot certonly --webroot -w ${APP_DIR}/public -d outreach.yourdomain.org
 3. Import your contact list:
      php ${APP_DIR}/scripts/import_contacts.php /path/to/contacts.csv
 4. Set an admin password for the browser-based template editor:
