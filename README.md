@@ -301,6 +301,47 @@ driver.
    `relationships` table (via SQL) controls the dropdown; add, rename,
    or reorder entries (`sort_order` controls display order).
 
+## Duplicate contacts
+
+`import_contacts.php` inserts every CSV row unconditionally, so
+re-running it -- or importing two lists that overlap -- adds the same
+person again, and they then receive one copy of each message per row.
+
+```
+php scripts/dedupe_contacts.php            # report only, changes nothing
+php scripts/dedupe_contacts.php --apply    # merge each group down to one row
+```
+
+Two rows count as duplicates when they share a `university_id` **and**
+an email address, compared case-insensitively and ignoring surrounding
+whitespace. That matches the actual harm -- one mailbox at one
+institution getting the message twice. Names and roles are not part of
+the comparison, because "Dr. Alex Chen" and "Alex Chen" are the same
+person and no rule can tell that reliably; the script reports differing
+names, roles and sources within a group instead of guessing. The same
+address at two different institutions is left alone -- that's one person
+holding two posts.
+
+The earliest row (lowest id) survives. Two behaviours worth knowing
+before you run it with `--apply`:
+
+- **An opt-out wins.** If any row in a group has `active = 0`, the
+  surviving row is set to `0` too. Since `active = 0` is how this app
+  records "stop emailing this person", a merge that dropped it would
+  resume mailing someone who asked not to be. Each instance is reported,
+  so a row that was merely stale can be reactivated afterwards.
+- **Send history is moved, not deleted.** `email_log.contact_id`
+  references `university_contacts(id)` with no `ON DELETE`, so MySQL
+  refuses to delete any contact that has ever been emailed. The script
+  repoints those log rows onto the surviving contact first, in the same
+  transaction -- the audit trail survives, and a failure anywhere rolls
+  the whole run back rather than leaving a half-merged state.
+
+Take a backup first; the dry-run output reminds you with the exact
+`mysqldump` command. To stop duplicates recurring, add
+`UNIQUE KEY (university_id, email)` to the table and have the importer
+use `INSERT ... ON DUPLICATE KEY UPDATE`.
+
 ## Behind Cloudflare (or any other proxy)
 
 If the site is proxied, `REMOTE_ADDR` is the proxy's address, not the
@@ -422,6 +463,8 @@ Also worth knowing:
   feature; fresh installs get everything from `sql/schema.sql`.
 - `scripts/install_ubuntu24.sh` -- provisioning script.
 - `scripts/import_contacts.php` -- CLI CSV importer.
+- `scripts/dedupe_contacts.php` -- CLI cleanup for duplicate contacts
+  created by overlapping imports (see "Duplicate contacts" below).
 - `scripts/make_admin_hash.php` -- CLI helper that generates the
   `ADMIN_PASSWORD_HASH` line for `config.php`.
 - `scripts/cloudflare-remoteip.sh` -- generates the Apache
