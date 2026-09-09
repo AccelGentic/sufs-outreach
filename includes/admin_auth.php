@@ -179,6 +179,14 @@ function admin_clear_login_attempts(string $ip): void
  * Headers for every admin page: keep them out of search indexes and out
  * of frames, and don't leak the admin URL as a referrer to whatever a
  * template body links to.
+ *
+ * no-store matters most when there's a CDN in front (Cloudflare and
+ * friends). Nothing here is cacheable by default, but a single
+ * "cache everything" rule at the edge would otherwise be enough to
+ * store a page carrying one admin's CSRF token and hand it to the next
+ * visitor. Saying so explicitly means that rule can't reach these
+ * pages by accident. It applies to browser and proxy caches equally --
+ * an admin page has no business sitting in either.
  */
 function admin_send_headers(): void
 {
@@ -186,4 +194,5 @@ function admin_send_headers(): void
     header('X-Frame-Options: DENY');
     header('X-Content-Type-Options: nosniff');
     header('Referrer-Policy: same-origin');
+    header('Cache-Control: private, no-store, max-age=0');
 }

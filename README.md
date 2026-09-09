@@ -292,6 +292,89 @@ driver.
    `relationships` table (via SQL) controls the dropdown; add, rename,
    or reorder entries (`sort_order` controls display order).
 
+## Behind Cloudflare (or any other proxy)
+
+If the site is proxied, `REMOTE_ADDR` is the proxy's address, not the
+visitor's -- and this app keys two things on the client IP:
+
+- **the submission throttle** (`MAX_SUBMISSIONS_PER_HOUR_PER_IP`), which
+  turns into a site-wide cap: after 10 submissions in an hour from
+  *anyone*, every visitor gets "Too many submissions recently from this
+  email or network";
+- **the admin login lockout**, where one person mistyping their password
+  five times locks out every other admin.
+
+`submissions.ip_address` also stops being a usable audit trail. Fix it
+once, at the server level, so the app and the logs both see real
+addresses without any app code changes:
+
+```
+sudo scripts/cloudflare-remoteip.sh    # fetches Cloudflare's current ranges
+sudo a2enmod remoteip
+sudo a2enconf cloudflare-remoteip
+sudo apache2ctl configtest && sudo systemctl reload apache2
+```
+
+The script validates what it downloads and refuses to write a partial
+or non-CIDR list, keeps a `.bak`, and reverts if `configtest` fails --
+a malformed file here takes Apache down on the next reload. Re-run it
+periodically (it only reloads when the ranges actually changed):
+
+```
+0 4 1 * * root /var/www/university-outreach/scripts/cloudflare-remoteip.sh --quiet
+```
+
+`scripts/cloudflare-remoteip-example.conf` shows what it generates, but
+the ranges in it are a point-in-time snapshot -- generate the real one.
+
+**Firewall 80/443 to Cloudflare's ranges as well** (or use a
+`cloudflared` tunnel). `RemoteIPTrustedProxy` is an allowlist of peers
+whose `CF-Connecting-IP` header is believed; if the origin stays
+directly reachable, anyone who finds its address can send that header
+themselves and get a fresh identity per request -- which defeats both
+throttles rather than merely degrading them. Trusting the header
+without locking down the origin is worse than not setting it at all.
+
+Also worth knowing:
+
+- **Use Full (Strict) TLS mode, not Flexible.** Flexible leaves the
+  Cloudflare-to-origin leg in cleartext across the public internet, admin
+  password included. The Let's Encrypt certificate in
+  `apache-vhost-ssl-example.conf` satisfies Full (Strict); a Cloudflare
+  Origin CA certificate is the alternative.
+- **HTTPS detection already works.** `admin_session_start()` checks
+  `X-Forwarded-Proto`, which Cloudflare sets, so the session cookie
+  still gets `Secure` even when the origin leg is plain HTTP.
+- **Don't turn on "Cache Everything" without excluding this app.**
+  Nothing here is cacheable by default and the admin pages send
+  `Cache-Control: private, no-store`, but an edge rule that overrides
+  origin cache headers could still store a page carrying one admin's
+  CSRF token and serve it to someone else. Exclude `/admin/` and all
+  PHP from any such rule.
+- **`send.php` sends sequentially, one message per recipient**, and
+  Cloudflare cuts a request off at 100 seconds (**error 524**) on the
+  Free, Pro and Business plans. A long contact list on a slow SMTP
+  relay can cross that, and the visitor sees an error while PHP keeps
+  sending -- so they may retry and double-send. Staging multiplies it
+  (contacts x staging contacts). The Mailgun HTTP driver is
+  substantially faster than SMTP here.
+- **Certificate renewal** through an orange-clouded record usually
+  works, but breaks under "Always Use HTTPS" edge redirects or a WAF
+  challenge on the challenge path. Use DNS-01
+  (`python3-certbot-dns-cloudflare`) or grey-cloud during issuance, and
+  confirm with `certbot renew --dry-run` *after* Cloudflare is live.
+- **Mailgun DNS:** SPF and DKIM are TXT records and can't be proxied,
+  so they're unaffected. The one to watch is Mailgun's tracking
+  **CNAME** -- it must stay DNS-only (grey cloud); proxying it breaks
+  open/click tracking and link rewriting.
+- **Turnstile** is the natural fit for the CAPTCHA suggested below, if
+  you're on Cloudflare already.
+- Restricting `/admin/` by IP in the vhost only works once
+  `mod_remoteip` is configured -- before that it matches Cloudflare's
+  address, not the admin's. **Cloudflare Access** in front of `/admin/`
+  is the stronger option, since the login form is then never publicly
+  reachable.
+
 ## Abuse & deliverability notes
 
 - Basic per-email and per-IP hourly throttling is built in
@@ -329,6 +412,11 @@ driver.
 - `scripts/import_contacts.php` -- CLI CSV importer.
 - `scripts/make_admin_hash.php` -- CLI helper that generates the
   `ADMIN_PASSWORD_HASH` line for `config.php`.
+- `scripts/cloudflare-remoteip.sh` -- generates the Apache
+  `mod_remoteip` config from Cloudflare's published ranges, so the app
+  sees real client IPs when proxied (see "Behind Cloudflare" above).
+- `scripts/cloudflare-remoteip-example.conf` -- reference copy of what
+  that script generates.
 - `scripts/apache-vhost-example.conf` -- example vhost, plain HTTP, for
   bringing a host up before certificates exist.
 - `scripts/apache-vhost-ssl-example.conf` -- the HTTPS vhost to run in
