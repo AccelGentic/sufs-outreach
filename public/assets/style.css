@@ -1,9 +1,10 @@
 :root {
   --accent: #154734;
-  --button-bg: #b91c1c;
-  /* Sampled from assets/logo.png -- the red of the logo block itself,
-     used for header accents so the chrome matches the mark. */
+  /* Sampled from assets/logo.png -- the red of the logo block itself.
+     Everything red in the chrome derives from it so the buttons and the
+     header accents match the mark exactly. */
   --brand-red: #d62828;
+  --button-bg: var(--brand-red);
   --bg: #f5f6f3;
   --card-bg: #ffffff;
   --border: #d8dcd6;
