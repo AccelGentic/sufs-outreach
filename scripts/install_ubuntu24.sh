@@ -77,8 +77,12 @@ cat <<EOM
      sudo certbot --apache -d outreach.yourdomain.org
 3. Import your contact list:
      php ${APP_DIR}/scripts/import_contacts.php /path/to/contacts.csv
-4. Edit the baseline email template (sql/schema.sql's sample row, or via SQL)
-   to your organization's real script.
+4. Set an admin password for the browser-based template editor:
+     php ${APP_DIR}/scripts/make_admin_hash.php
+   and paste the ADMIN_PASSWORD_HASH line it prints into config.php.
+   Then edit the baseline email template at https://your-host/admin/
+   (see "Editing the email text" in the README). Until that hash is
+   set, the admin area refuses every login.
 5. If this form will be publicly reachable, consider adding a CAPTCHA
    (e.g. hCaptcha) to public/index.php to deter abuse -- basic per-email
    and per-IP throttling is already built in (see config.php).

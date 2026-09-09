@@ -117,6 +117,18 @@ CREATE TABLE submissions (
     KEY idx_email_created (email, created_at)
 ) ENGINE=InnoDB;
 
+-- Failed admin login attempts, per IP, for the browser-based template
+-- editor under public/admin/. Only used for brute-force throttling
+-- (config.php: ADMIN_MAX_LOGIN_ATTEMPTS / ADMIN_LOCKOUT_MINUTES) --
+-- rows older than 7 days are pruned opportunistically on login.
+CREATE TABLE admin_login_attempts (
+    id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    ip_address VARCHAR(45) NOT NULL,
+    succeeded TINYINT(1) NOT NULL DEFAULT 0,
+    attempted_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    KEY idx_ip_time (ip_address, attempted_at)
+) ENGINE=InnoDB;
+
 -- Per-recipient send log -- audit trail for every message actually sent.
 CREATE TABLE email_log (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,

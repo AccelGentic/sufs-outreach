@@ -230,3 +230,92 @@ function too_many_recent_submissions(string $email, string $ip): bool
 
     return false;
 }
+
+/**
+ * Which {{placeholders}} are meaningful for a given template type.
+ * Used by the admin editor to document what's available and to warn
+ * about tokens that will never be replaced -- a typo like
+ * {{firstname}} isn't an error anywhere in the send path, it just
+ * ships as literal text to every recipient, so it's worth catching at
+ * edit time.
+ */
+function template_placeholders(string $type): array
+{
+    $sender = [
+        'first_name'   => "The visitor's first name",
+        'last_name'    => "The visitor's last name",
+        'sender_email' => "The visitor's own email address",
+        'relationship' => 'How they relate to the institution (Alumni, Parent, Donor, ...)',
+        'university'   => 'The institution they selected',
+        'address'      => "The visitor's address, if they entered one",
+    ];
+
+    if ($type === 'confirmation') {
+        return $sender + [
+            'recipient_count' => 'How many contacts the message went to',
+            'sent_count'      => 'How many copies were delivered successfully',
+            'failed_count'    => 'How many copies failed',
+        ];
+    }
+
+    return $sender + [
+        'recipient_name'  => "Each recipient's own name (filled in per person at send time)",
+        'recipient_role'  => "Each recipient's role (filled in per person at send time)",
+        'recipient_email' => "Each recipient's email address (filled in per person at send time)",
+    ];
+}
+
+/**
+ * Placeholder-looking tokens in $text that render_template() will not
+ * replace for this template type -- either an unknown name, or a known
+ * name written with stray whitespace ({{ first_name }}), which is just
+ * as dead since the merge does a literal string swap on '{{name}}'.
+ * Returns the raw tokens as written, de-duplicated.
+ */
+function unknown_placeholders(string $text, string $type): array
+{
+    if (!preg_match_all('/\{\{[^{}]*\}\}/', $text, $matches)) {
+        return [];
+    }
+
+    $known = array_keys(template_placeholders($type));
+    $unknown = [];
+    foreach ($matches[0] as $token) {
+        $name = substr($token, 2, -2);
+        if (!in_array($name, $known, true)) {
+            $unknown[$token] = true;
+        }
+    }
+
+    return array_keys($unknown);
+}
+
+/**
+ * Stand-in values used to render the admin editor's preview, so an
+ * admin sees a realistic message rather than raw {{tokens}}.
+ */
+function sample_template_vars(string $type): array
+{
+    $sender = [
+        'first_name'   => 'Jordan',
+        'last_name'    => 'Rivera',
+        'sender_email' => 'jordan.rivera@example.edu',
+        'relationship' => 'Alumni',
+        'university'   => 'Example State University',
+        'address'      => '123 Main Street, Springfield, IL 62701',
+    ];
+
+    if ($type === 'confirmation') {
+        return $sender + [
+            'recipient_count' => '4',
+            'sent_count'      => '4',
+            'failed_count'    => '0',
+        ];
+    }
+
+    return $sender + [
+        'recipient_name'  => 'Dr. Alex Chen',
+        'recipient_role'  => 'Provost',
+        'recipient_email' => 'provost@example.edu',
+    ];
+}

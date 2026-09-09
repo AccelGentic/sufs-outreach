@@ -48,10 +48,10 @@ edited draft still personalizes per person): `{{recipient_name}}`,
 from the editable box, everyone just gets that generic text instead --
 nothing breaks either way.
 
-Edit the baseline template with SQL:
-```sql
-UPDATE email_templates SET subject = '...', body = '...' WHERE type = 'outreach';
-```
+Edit the baseline template in the browser at `/admin/` -- see "Editing
+the email text" below. (The equivalent by hand is
+`UPDATE email_templates SET subject = '...', body = '...' WHERE type =
+'outreach';`, still available if you'd rather work in SQL.)
 
 ## Confirmation email
 
@@ -60,12 +60,9 @@ email at their own address -- not the same thing as the CC copy they get
 on every individual recipient message above; this is a single summary
 notification. Its content comes from the `email_templates` row where
 `type = 'confirmation'`, which ships as an obvious placeholder you're
-expected to replace:
-```sql
-UPDATE email_templates
-SET subject = '...', body = '...'
-WHERE type = 'confirmation';
-```
+expected to replace -- edit it at `/admin/` alongside the outreach
+template.
+
 It has its own placeholders -- all the sender-side ones above
 (`{{first_name}}`, `{{university}}`, etc.), plus `{{recipient_count}}`
 (how many real contacts the message went to), `{{sent_count}}`, and
@@ -82,6 +79,74 @@ null) rather than affecting `status` or the success message on
 `staging_contacts` pool exactly like recipient messages are -- it never
 reaches whatever address the visitor actually typed into the form while
 testing.
+
+## Editing the email text (admin)
+
+Both templates are editable from a browser at **`/admin/`** on the same
+vhost (e.g. `https://outreach.yourdomain.org/admin/`) -- no SQL, no
+shell. Nothing on the visitor-facing pages links to it; you go there
+directly.
+
+**One-time setup.** On the server:
+
+```
+php scripts/make_admin_hash.php
+```
+
+It prompts for a password (twice, hidden) and prints a
+`define('ADMIN_PASSWORD_HASH', '...');` line -- paste that into
+`config.php`, replacing the `CHANGE_ME` placeholder. There are no admin
+accounts in the database; it's one shared password, hashed with
+`password_hash()`. Until a real hash is in place the admin area refuses
+every login rather than falling open, so a half-finished install is
+never an editable one.
+
+If you're upgrading an existing install (one whose database predates
+this feature), also load the small table the login throttle uses:
+
+```
+mysql university_outreach < sql/migrations/001_admin_login_attempts.sql
+```
+
+**What you can do there.**
+
+- **Edit** either template's name, subject, and body. Saving the live
+  template takes effect on the very next message generated -- drafts
+  already in progress and anything already sent are untouched.
+- **Preview** before saving: sample values are merged into the
+  placeholders, and the result is run through the exact sanitizer
+  `send.php` uses -- so what you see is what actually goes out,
+  including the plain-text alternative that non-HTML mail clients show.
+- **Insert placeholders** by clicking them in the side panel, with a
+  note on what each one resolves to for that template type.
+- **Create a new version** without disturbing the live one: new
+  templates are saved inactive, and *Make live* switches them on and
+  switches the previous one off in the same step. The old one stays
+  in the list as a record of what was being sent before.
+- **Turn the confirmation email off** entirely (`send.php` skips that
+  step when no confirmation template is active). The outreach template
+  can't be switched off -- visitors would get an empty message body --
+  so activating a replacement is how you retire one.
+
+**Warnings you'll see.** If the subject or body contains something that
+looks like a placeholder but isn't one -- a typo like `{{firstname}}`,
+or `{{ first_name }}` with spaces inside the braces -- the editor flags
+it. Neither is an error anywhere in the send path: the merge is a
+literal string swap, so an unrecognized token is simply mailed out
+as-is to every recipient. It's much cheaper to catch at edit time.
+
+**Access control.** A single password, an idle timeout
+(`ADMIN_SESSION_TIMEOUT`), and a per-IP lockout after repeated failures
+(`ADMIN_MAX_LOGIN_ATTEMPTS` within `ADMIN_LOCKOUT_MINUTES`, tracked in
+`admin_login_attempts` rather than in the session, so clearing cookies
+doesn't reset it). Admin pages send `noindex`/`X-Frame-Options` headers,
+the session cookie is `HttpOnly`/`SameSite=Lax` (and `Secure` once
+you're on HTTPS), and every state-changing action is CSRF-protected. If
+you want a second lock on the door, the example vhost has a commented
+block for restricting `/admin/` by IP.
+
+Serve this over HTTPS. The admin password crosses the wire on every
+sign-in.
 
 ## Staging vs. production
 
@@ -204,10 +269,16 @@ driver.
    ```
    Expects a header row with columns `college/uni,name,role,email` (column
    names are normalized, so `College/Uni`, `college_uni`, etc. all match).
-7. Edit the baseline template and the relationship options to fit your
-   organization -- see "Placeholders" above for the template, and edit
-   the `relationships` table (via SQL) to add, rename, or reorder the
-   dropdown options (`sort_order` controls display order).
+7. Set an admin password so you can edit the email text from a browser:
+   ```
+   php scripts/make_admin_hash.php
+   ```
+   and paste the line it prints into `config.php`. The templates are
+   then editable at `https://your-host/admin/` -- see "Editing the
+   email text" above.
+8. Edit the relationship options to fit your audience -- the
+   `relationships` table (via SQL) controls the dropdown; add, rename,
+   or reorder entries (`sort_order` controls display order).
 
 ## Abuse & deliverability notes
 
@@ -231,11 +302,19 @@ driver.
   staging_contacts, templates, relationships, submissions, send log) +
   starter template and relationship rows.
 - `config.php.example` -- copy to `config.php` and fill in.
-- `includes/` -- DB connection, CSRF helpers, shared functions, and the
-  mail drivers (`mailgun.php`, `smtp_mailer.php`, `switchboard.php` --
-  the last one is a stub, see "Sending mail" above) -- not web-reachable.
+- `includes/` -- DB connection, CSRF helpers, shared functions, admin
+  authentication (`admin_auth.php`), template read/write for the admin
+  editor (`template_store.php`), and the mail drivers (`mailgun.php`,
+  `smtp_mailer.php`, `switchboard.php` -- the last one is a stub, see
+  "Sending mail" above) -- not web-reachable.
 - `composer.json` -- PHPMailer dependency (only needed for the SMTP driver).
 - `public/` -- the actual web app; this is the only folder Apache serves.
+- `public/admin/` -- the password-protected email template editor (see
+  "Editing the email text" above).
+- `sql/migrations/` -- schema changes for installs that predate a
+  feature; fresh installs get everything from `sql/schema.sql`.
 - `scripts/install_ubuntu24.sh` -- provisioning script.
 - `scripts/import_contacts.php` -- CLI CSV importer.
+- `scripts/make_admin_hash.php` -- CLI helper that generates the
+  `ADMIN_PASSWORD_HASH` line for `config.php`.
 - `scripts/apache-vhost-example.conf` -- example vhost.

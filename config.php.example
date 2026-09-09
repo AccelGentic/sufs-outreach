@@ -66,6 +66,22 @@ define('MAIL_CC_SENDER', true); // CC the visitor on the mail sent on their beha
 define('APP_BASE_URL', 'https://yourdomain.org/outreach');
 define('SESSION_NAME', 'outreach_session');
 
+// --- Admin area (public/admin/) ---
+// Browser-based editor for the email templates. A single shared
+// password protects it; there are no admin accounts in the database.
+// Generate the hash with:
+//     php scripts/make_admin_hash.php
+// and paste the line it prints in place of the one below. Until a real
+// hash is in place, the admin area refuses every login rather than
+// falling open.
+define('ADMIN_PASSWORD_HASH', 'CHANGE_ME');
+// Log an idle admin out after this many seconds (0 disables the timeout).
+define('ADMIN_SESSION_TIMEOUT', 3600);
+// Failed logins allowed from one IP within ADMIN_LOCKOUT_MINUTES before
+// that IP is locked out (0 disables the lockout entirely).
+define('ADMIN_MAX_LOGIN_ATTEMPTS', 5);
+define('ADMIN_LOCKOUT_MINUTES', 15);
+
 // --- Basic abuse throttling ---
 define('MAX_SUBMISSIONS_PER_HOUR_PER_EMAIL', 3);
 define('MAX_SUBMISSIONS_PER_HOUR_PER_IP', 10);

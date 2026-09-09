@@ -1,0 +1,3 @@
+# Real configuration -- database password, mail credentials, and the
+# admin password hash. Only config.php.example belongs in git.
+/config.php
