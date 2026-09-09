@@ -30,9 +30,9 @@ if (!$confirm) {
   <?php if ($confirm['sent'] > 0): ?>
 <p>Thank you for emailing your school’s leadership and urging them to endorse SUFS America’s Compact for Higher Education.
 <p>
-Please consider sharing the link to <a href=\"https://www.standupforscience.net/sufs-compact-higher-education\" target=\"_blank\">SUFS America's Compact</a> with colleagues, friends and other members of your school’s community. 
+Please consider sharing the link to <a href="https://www.standupforscience.net/sufs-compact-higher-education" target="_blank">SUFS America's Compact</a> with colleagues, friends and other members of your school’s community. 
 <p>
-Finally, we invite you to join the growing number of science-saving activists who support our work by making a <a href=\"https://secure.qgiv.com/for/SUFS-NEW-CONGRESS-SAVES-SCIENCE/\" target=\"_blank\">contribution to SUFS</a>. 
+Finally, we invite you to join the growing number of science-saving activists who support our work by making a <a href="https://secure.qgiv.com/for/fuel-sufs-americas-compact-campaign/" target="_blank">contribution to SUFS</a>. 
 
   <?php endif; ?>
   <?php if ($confirm['failed'] > 0): ?>
