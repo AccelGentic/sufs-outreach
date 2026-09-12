@@ -305,6 +305,59 @@ driver.
    `relationships` table (via SQL) controls the dropdown; add, rename,
    or reorder entries (`sort_order` controls display order).
 
+## When a visitor's school isn't listed
+
+`public/suggest_school.php` lets someone whose institution is missing
+tell you about it, and pass on any leadership contacts they know. Each
+submission is emailed to `SCHOOL_REQUEST_TO_ADDRESS` through whichever
+`MAIL_DRIVER` is configured -- the same path the rest of the app's mail
+takes.
+
+Set the address in `config.php`:
+
+```php
+define('SCHOOL_REQUEST_TO_ADDRESS', 'you@yourdomain.org');
+define('SCHOOL_REQUEST_TO_NAME', 'Outreach Team');
+```
+
+Left as `CHANGE_ME`, the whole feature switches itself off and the links
+offering it disappear, rather than inviting visitors to fill in a form
+that would go nowhere.
+
+Visitors reach it two ways, both on `index.php`:
+
+- **From the typeahead, when nothing matches.** That's the moment
+  someone learns their school isn't listed, so the offer appears right
+  there under "No matching educational institutions" rather than in a
+  banner everyone reads before they have the problem.
+- **From a quiet line under the field**, always visible. This catches
+  the visitor who mistypes, gets three wrong results instead of an empty
+  list, and would never trigger the empty state at all.
+
+Whatever they typed carries over as a prefill, so they don't retype the
+name they just failed to find.
+
+Three things behave differently here to the rest of the app, each on
+purpose:
+
+- **Nothing is stored.** The notification email is the only record, so a
+  failed send is reported to the visitor instead of being swallowed, and
+  the full submission is written to the PHP error log -- recoverable
+  from the server if the mail never arrives.
+- **Reply-To is the visitor's address**, not the fixed one from config,
+  so you can just hit reply and ask which campus they meant. That's safe
+  here because this message goes to your own inbox rather than out to
+  university contacts.
+- **Staging does not redirect it.** The `staging_contacts` safeguard
+  exists to keep test mail away from real people; here the recipient is
+  you, and you want to see the test. The subject is prefixed
+  `[STAGING]` instead.
+
+Spam defences are a honeypot field, a three-second minimum fill time,
+CSRF, and length caps -- enough for casual bots. With no database table
+there's no per-IP counter behind it, so if this ever gets hammered the
+answer is a CAPTCHA (Turnstile, if you're already behind Cloudflare).
+
 ## Duplicate contacts
 
 `import_contacts.php` inserts every CSV row unconditionally, so
@@ -488,6 +541,8 @@ Also worth knowing:
 - `public/` -- the actual web app; this is the only folder Apache serves.
 - `public/admin/` -- the password-protected email template editor (see
   "Editing the email text" above).
+- `public/suggest_school.php` -- the "my school isn't listed" form (see
+  "When a visitor's school isn't listed" above).
 - `sql/migrations/` -- schema changes for installs that predate a
   feature; fresh installs get everything from `sql/schema.sql`.
 - `scripts/install_ubuntu24.sh` -- provisioning script.

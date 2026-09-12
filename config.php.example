@@ -66,6 +66,18 @@ define('MAIL_CC_SENDER', true); // CC the visitor on the mail sent on their beha
 define('APP_BASE_URL', 'https://yourdomain.org/outreach');
 define('SESSION_NAME', 'outreach_session');
 
+// --- "My school isn't listed" notifications ---
+// Where the suggest-a-school form (public/suggest_school.php) sends its
+// notifications. Every submission is emailed here through whichever
+// MAIL_DRIVER is configured above -- nothing is stored in the database,
+// so this address is the only record.
+//
+// Leave it as CHANGE_ME and the feature switches itself off: the links
+// offering it disappear from the form, rather than inviting visitors to
+// fill in something that would go nowhere.
+define('SCHOOL_REQUEST_TO_ADDRESS', 'CHANGE_ME');
+define('SCHOOL_REQUEST_TO_NAME', 'Outreach Team');
+
 // --- Admin area (public/admin/) ---
 // Browser-based editor for the email templates. A single shared
 // password protects it; there are no admin accounts in the database.

@@ -7,6 +7,7 @@ require_once __DIR__ . '/../includes/csrf.php';
 
 $universities = get_universities();
 $relationships = get_relationships();
+$suggestEnabled = school_requests_enabled();
 $errors = $_SESSION['form_errors'] ?? [];
 $old = $_SESSION['form_old'] ?? [];
 unset($_SESSION['form_errors'], $_SESSION['form_old']);
@@ -84,6 +85,12 @@ $universitiesJson = json_encode(
       <ul id="university_listbox" class="typeahead-list" role="listbox" hidden></ul>
     </div>
     <p class="field-error" id="university_error" hidden>Please select an educational institution from the list.</p>
+    <?php if ($suggestEnabled): ?>
+      <p class="hint">
+        Don't see your school?
+        <a href="suggest_school.php" id="suggest_school_link">Tell us about it</a>.
+      </p>
+    <?php endif; ?>
 
     <label for="relationship_id">Your Relationship to This Educational Institution *</label>
     <select id="relationship_id" name="relationship_id" required>
@@ -105,6 +112,7 @@ $universitiesJson = json_encode(
 
 <script>
 var UNIVERSITIES = <?= $universitiesJson ?>;
+var SUGGEST_ENABLED = <?= $suggestEnabled ? 'true' : 'false' ?>;
 
 (function () {
   var MAX_RESULTS = 20;
@@ -118,6 +126,15 @@ var UNIVERSITIES = <?= $universitiesJson ?>;
 
   var visibleItems = []; // [{id, name}] currently rendered, in order
   var highlighted = -1;
+
+  var suggestLink = document.getElementById('suggest_school_link');
+
+  // Carries whatever they typed over to the suggest form, so they don't
+  // retype the school name they just failed to find.
+  function suggestUrl(query) {
+    var q = (query || '').trim();
+    return 'suggest_school.php' + (q ? '?school=' + encodeURIComponent(q) : '');
+  }
 
   // Subsequence match of `needle` inside `haystack` (both already
   // lowercased). Returns null if needle's characters don't all appear
@@ -215,6 +232,27 @@ var UNIVERSITIES = <?= $universitiesJson ?>;
       li.className = 'typeahead-empty';
       li.textContent = 'No matching educational institutions';
       listbox.appendChild(li);
+
+      // This is the exact moment someone finds out their school isn't
+      // listed, which is why the offer to add it belongs here rather
+      // than in a banner above the form that everyone reads before they
+      // have the problem.
+      if (SUGGEST_ENABLED) {
+        var suggest = document.createElement('li');
+        suggest.className = 'typeahead-suggest';
+        var link = document.createElement('a');
+        link.href = suggestUrl(query);
+        link.textContent = 'Tell us about your school \u2192';
+        // mousedown, like the option rows above: the input blurs on
+        // click and would close the list before the link registered.
+        link.addEventListener('mousedown', function (e) {
+          e.stopPropagation();
+          window.location.href = link.href;
+        });
+        suggest.appendChild(link);
+        listbox.appendChild(suggest);
+      }
+
       listbox.hidden = false;
       search.setAttribute('aria-expanded', 'true');
       return;
@@ -251,6 +289,9 @@ var UNIVERSITIES = <?= $universitiesJson ?>;
   var debounceTimer = null;
   search.addEventListener('input', function () {
     clearSelection(); // typing invalidates any previous selection
+    if (suggestLink) {
+      suggestLink.href = suggestUrl(search.value);
+    }
     clearTimeout(debounceTimer);
     var value = search.value;
     debounceTimer = setTimeout(function () { renderResults(value); }, 60);

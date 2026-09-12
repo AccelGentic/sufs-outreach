@@ -319,3 +319,16 @@ function sample_template_vars(string $type): array
         'recipient_email' => 'provost@example.edu',
     ];
 }
+
+/**
+ * Whether the "my school isn't listed" form is usable. It emails a fixed
+ * address from config.php and keeps no database record, so without a
+ * real address configured there is nowhere for a submission to go --
+ * in which case the links offering it are hidden rather than leading
+ * visitors into a form that would silently discard what they wrote.
+ */
+function school_requests_enabled(): bool
+{
+    return defined('SCHOOL_REQUEST_TO_ADDRESS')
+        && is_valid_email(trim((string) SCHOOL_REQUEST_TO_ADDRESS));
+}

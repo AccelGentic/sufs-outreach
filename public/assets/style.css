@@ -423,3 +423,34 @@ code {
   .site-logo img { width: 180px; }
   .site-nav ul { gap: 1.25rem; }
 }
+
+/* ---- "Tell us about your school" ---- */
+
+/* The offer that appears in the typeahead when nothing matched. Sits
+   below the "no matches" line, separated so it reads as an action
+   rather than another result. */
+.typeahead-list li.typeahead-suggest {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--border);
+  cursor: pointer;
+}
+.typeahead-list li.typeahead-suggest a {
+  color: var(--brand-red);
+  font-size: 0.9rem;
+  font-weight: 600;
+  text-decoration: none;
+}
+.typeahead-list li.typeahead-suggest a:hover,
+.typeahead-list li.typeahead-suggest a:focus-visible { text-decoration: underline; }
+
+/* Bot trap on the suggest form: off-screen rather than display:none,
+   since some bots skip hidden fields but follow the layout. It's
+   aria-hidden and out of the tab order in the markup, so nobody using a
+   keyboard or screen reader can land in it by accident. */
+.honeypot {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+}
