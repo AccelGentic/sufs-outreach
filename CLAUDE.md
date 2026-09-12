@@ -32,12 +32,43 @@ git fetch -q /path/to/scratch/<short-name>.bundle <branch>:check
 git checkout -q check && git log --oneline -1 && git diff --stat origin/main..HEAD
 ```
 
-Then send it with `SendUserFile` and include the command to apply it:
+Then send it with `SendUserFile` and include the command to apply it.
+Merge straight into `main` rather than fetching into a local branch --
+the maintainer pushes `main` and never needs the branch locally, and a
+fetch into a branch ref fails outright if that branch happens to be
+checked out or has diverged from an earlier bundle:
 
 ```bash
-git fetch /path/to/<name>.bundle <branch>:<branch>
-git checkout <branch>
+git checkout main && git pull
+git fetch /path/to/<name>.bundle <branch>
+git merge FETCH_HEAD
 ```
+
+Also build a `git format-patch` series over the current `origin/main`
+and send it alongside. It is one extra command, and `git am` replays
+commits onto whatever is checked out without needing shared history, so
+it gives the maintainer a second way in if the bundle route hits
+friction:
+
+```bash
+git format-patch origin/main --stdout > /path/to/scratch/<name>.patch
+```
+
+Verify it applies to a clean clone of `origin/main` before sending, the
+same way the bundle is verified, and include the command:
+
+```bash
+git checkout main && git pull
+git am /path/to/<name>.patch
+```
+
+If a merge is ever refused with `fatal: refusing to merge unrelated
+histories`, the overwhelmingly likely cause is that it is being applied
+in **the wrong repository** -- that is what happened the one time it
+came up, and the bundle was fine. The error means no common ancestor, so
+check that first rather than suspecting a corrupted bundle or a damaged
+clone: `git rev-list --max-parents=0 HEAD` in the target clone should
+print `56d5cc9`, this repo's initial commit.
 
 Send the individual changed file alongside the bundle when it's
 something the maintainer may want to drop straight onto a server (an
