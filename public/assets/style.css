@@ -454,3 +454,17 @@ code {
   height: 1px;
   overflow: hidden;
 }
+
+/* Heading above the read-only message on email_leaders.php. The
+   preview frame and field styles are shared with the admin editor. */
+.message-heading {
+  font-size: 1.05rem;
+  color: var(--accent);
+  margin: 1.5rem 0 0.5rem;
+}
+
+/* Shorter than the admin editor's frame, which is sized for a template
+   being worked on. A visitor is reading one short message, and the full
+   height leaves an empty box under it. Still scrolls if the message is
+   longer. */
+.preview-frame-compact { height: 300px; }

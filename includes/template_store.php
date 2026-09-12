@@ -9,8 +9,9 @@
 require_once __DIR__ . '/db.php';
 
 const TEMPLATE_TYPES = [
-    'outreach'     => 'Outreach email (the draft each visitor reviews and sends)',
-    'confirmation' => 'Confirmation email (the receipt sent to the visitor afterwards)',
+    'outreach'        => 'Outreach email (the draft each visitor reviews and sends)',
+    'confirmation'    => 'Confirmation email (the receipt sent to the visitor afterwards)',
+    'unlisted_school' => "Unlisted school email (sent as-is to a school that isn't in the list yet)",
 ];
 
 /** Hard cap on a template body, matching send.php's own limit -- a

@@ -358,6 +358,43 @@ CSRF, and length caps -- enough for casual bots. With no database table
 there's no per-IP counter behind it, so if this ever gets hammered the
 answer is a CAPTCHA (Turnstile, if you're already behind Cloudflare).
 
+### Writing to that school's leadership
+
+If the visitor gave any email addresses in the leadership box, the next
+screen offers to send them a prepared message. The addresses are found
+in that free text (so `Dr. Jane Doe, Provost, jdoe@example.edu` works),
+de-duplicated, and capped at five.
+
+The subject and body come from the active `unlisted_school` template and
+are shown **read-only** -- the visitor chooses whether to send it, not
+what it says. Its placeholders are `{{school}}`, `{{sender_email}}` and
+`{{recipient_email}}`; the sender-side ones the outreach template uses
+are not available here, because this form never asks for a name or a
+relationship. Edit it at `/admin/` like the other templates.
+
+Existing databases need
+`sql/migrations/004_unlisted_school_template.sql`, which widens the
+`email_templates.type` ENUM and inserts a placeholder row. **Replace
+that placeholder before going live** -- the visitor cannot edit it, so
+whatever is in it is exactly what a university leader receives.
+
+If the visitor gives no addresses, or no `unlisted_school` template is
+active, this step is skipped and they get the plain thank-you instead.
+
+**This is the one path in the app that mails an address a visitor typed
+rather than one you curated**, so it is fenced in deliberately:
+
+- The message body is fixed, so nothing a visitor writes reaches a
+  recipient -- only whether it is sent at all.
+- At most five recipients, no matter what gets pasted in.
+- Reachable only through the session the previous step sets, never as a
+  bookmarkable URL, and cleared on send so a refresh can't send twice.
+- Staging redirects delivery to `staging_contacts` exactly like the main
+  send path -- these are real people.
+- Every send is reported to `SCHOOL_REQUEST_TO_ADDRESS`, so you have a
+  record of what went out in whose name. Nothing is stored in the
+  database, so that email is the only record.
+
 ## Duplicate contacts
 
 `import_contacts.php` inserts every CSV row unconditionally, so
@@ -543,6 +580,8 @@ Also worth knowing:
   "Editing the email text" above).
 - `public/suggest_school.php` -- the "my school isn't listed" form (see
   "When a visitor's school isn't listed" above).
+- `public/email_leaders.php` -- the follow-on screen offering to send the
+  `unlisted_school` message to the addresses that form collected.
 - `sql/migrations/` -- schema changes for installs that predate a
   feature; fresh installs get everything from `sql/schema.sql`.
 - `scripts/install_ubuntu24.sh` -- provisioning script.

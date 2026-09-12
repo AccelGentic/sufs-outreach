@@ -15,6 +15,11 @@
  * absent from the list there is nothing on index.php they can complete
  * -- which is why it's a page of its own rather than a panel inside a
  * form they can't submit.
+ *
+ * When the visitor supplies leadership addresses and an
+ * `unlisted_school` template is active, they go on to
+ * email_leaders.php, which offers to send that prepared message to
+ * those addresses. Otherwise this page ends on its own thank-you.
  */
 require_once __DIR__ . '/../config.php';
 session_name(SESSION_NAME);
@@ -141,6 +146,23 @@ if ($enabled && $_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($result['success']) {
             unset($_SESSION['school_request_rendered_at']);
+
+            // If they gave us any leadership addresses, offer to send
+            // them the prepared message rather than ending on a
+            // thank-you. Extracted from the free-text box, capped, and
+            // only ever used from the session -- email_leaders.php never
+            // takes a recipient from the request.
+            $recipients = extract_email_addresses($leaders);
+            if ($recipients && get_active_template('unlisted_school')) {
+                $_SESSION['unlisted_school'] = [
+                    'school'       => $schoolName,
+                    'sender_email' => $contactEmail,
+                    'recipients'   => $recipients,
+                ];
+                header('Location: email_leaders.php');
+                exit;
+            }
+
             $_SESSION['school_request_sent'] = true;
             // Redirect after POST so a refresh can't re-send it.
             header('Location: suggest_school.php');

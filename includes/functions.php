@@ -258,6 +258,20 @@ function template_placeholders(string $type): array
         ];
     }
 
+    // The unlisted-school message has none of the sender-side
+    // placeholders above: it comes from suggest_school.php, which asks
+    // only for the school, the visitor's email and the leadership
+    // contacts they know -- there is no name, relationship or address to
+    // merge in. Referencing one of those here would ship the literal
+    // {{token}} to a university leader.
+    if ($type === 'unlisted_school') {
+        return [
+            'school'          => "The school the visitor said was missing",
+            'sender_email'    => "The visitor's own email address",
+            'recipient_email' => "The leadership address this copy is going to",
+        ];
+    }
+
     return $sender + [
         'recipient_name'  => "Each recipient's own name (filled in per person at send time)",
         'recipient_role'  => "Each recipient's role (filled in per person at send time)",
@@ -313,6 +327,14 @@ function sample_template_vars(string $type): array
         ];
     }
 
+    if ($type === 'unlisted_school') {
+        return [
+            'school'          => 'Springfield A&M',
+            'sender_email'    => 'jordan.rivera@example.edu',
+            'recipient_email' => 'provost@springfield.edu',
+        ];
+    }
+
     return $sender + [
         'recipient_name'  => 'Dr. Alex Chen',
         'recipient_role'  => 'Provost',
@@ -331,4 +353,40 @@ function school_requests_enabled(): bool
 {
     return defined('SCHOOL_REQUEST_TO_ADDRESS')
         && is_valid_email(trim((string) SCHOOL_REQUEST_TO_ADDRESS));
+}
+
+/**
+ * Pulls email addresses out of the free-text "leadership contacts" box
+ * on suggest_school.php, so the visitor can be offered the chance to
+ * write to them. People type things like
+ * "Dr. Jane Doe, Provost, jdoe@example.edu" one per line, so the
+ * addresses are found rather than parsed out of a fixed format.
+ *
+ * De-duplicated case-insensitively, validated with the same rule as
+ * everywhere else, and capped: whatever is pasted in, this can only ever
+ * turn into a handful of messages.
+ */
+function extract_email_addresses(string $text, int $limit = 5): array
+{
+    if (!preg_match_all('/[^\s<>,;:"\'()\[\]]+@[^\s<>,;:"\'()\[\]]+/', $text, $matches)) {
+        return [];
+    }
+
+    $found = [];
+    foreach ($matches[0] as $candidate) {
+        // Trailing punctuation is common when an address ends a sentence.
+        $candidate = rtrim($candidate, '.,;:)>]');
+        if (!is_valid_email($candidate)) {
+            continue;
+        }
+        $key = mb_strtolower($candidate);
+        if (!isset($found[$key])) {
+            $found[$key] = $candidate;
+        }
+        if (count($found) >= $limit) {
+            break;
+        }
+    }
+
+    return array_values($found);
 }

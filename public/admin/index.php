@@ -104,8 +104,10 @@ foreach ($templates as $t) {
           No <?= h($type) ?> template exists yet.
           <?php if ($type === 'outreach'): ?>
             Visitors will get an empty message body until one is created and activated.
-          <?php else: ?>
+          <?php elseif ($type === 'confirmation'): ?>
             The confirmation step is skipped entirely while there's none active.
+          <?php else: ?>
+            That step is skipped entirely while there's none active.
           <?php endif; ?>
         </p>
       <?php else: ?>
@@ -114,7 +116,7 @@ foreach ($templates as $t) {
             None of these is active, so
             <?= $type === 'outreach'
                 ? 'visitors are being handed an empty message body'
-                : 'no confirmation email is being sent' ?>.
+                : 'that step is being skipped' ?>.
             Activate one below.
           </div>
         <?php endif; ?>
@@ -148,9 +150,9 @@ foreach ($templates as $t) {
                     <input type="hidden" name="template_id" value="<?= (int) $t['id'] ?>">
                     <button type="submit" class="button-secondary button-inline">Make live</button>
                   </form>
-                <?php elseif ($type === 'confirmation'): ?>
+                <?php else: ?>
                   <form method="post" action="index.php" class="inline-form"
-                        onsubmit="return confirm('Turn off the confirmation email? Visitors will stop receiving a receipt after they send.');">
+                        onsubmit="return confirm('Turn this template off? The step that uses it will be skipped entirely.');">
                     <?= csrf_field() ?>
                     <input type="hidden" name="action" value="deactivate">
                     <input type="hidden" name="template_id" value="<?= (int) $t['id'] ?>">
@@ -166,7 +168,7 @@ foreach ($templates as $t) {
 
       <p>
         <a class="button-secondary button-inline" href="edit.php?new=<?= h($type) ?>">
-          New <?= $type === 'outreach' ? 'outreach' : 'confirmation' ?> template
+          New <?= h(str_replace('_', ' ', $type)) ?> template
         </a>
       </p>
     </section>

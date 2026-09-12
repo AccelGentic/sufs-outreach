@@ -77,10 +77,18 @@ CREATE TABLE staging_contacts (
 -- submissions.confirmation_sent_at below). The confirmation template
 -- only has the sender-side placeholders above, plus:
 --   {{recipient_count}} {{sent_count}} {{failed_count}}
+--
+-- `unlisted_school` is the message offered to a visitor whose
+-- institution isn't in the list yet, sent to the leadership address
+-- they typed into public/suggest_school.php themselves. Unlike the
+-- outreach template it is NOT editable by the visitor -- they see it
+-- read-only and choose whether to send it -- so the wording here is the
+-- wording that goes out. Its placeholders are:
+--   {{school}} {{sender_email}} {{recipient_email}}
 CREATE TABLE email_templates (
     id INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     name VARCHAR(150) NOT NULL,
-    type ENUM('outreach','confirmation') NOT NULL DEFAULT 'outreach',
+    type ENUM('outreach','confirmation','unlisted_school') NOT NULL DEFAULT 'outreach',
     subject VARCHAR(255) NOT NULL,
     body TEXT NOT NULL,
     active TINYINT(1) NOT NULL DEFAULT 1,
@@ -178,6 +186,18 @@ INSERT INTO email_templates (name, type, subject, body, active) VALUES (
   'confirmation',
   'Your message to {{university}} has been sent',
   '[PLACEHOLDER -- replace this with your organization''s confirmation email text.]\n\nDear {{first_name}},\n\n[Write your confirmation message here.]\n\nAvailable placeholders: {{first_name}}, {{last_name}}, {{sender_email}}, {{relationship}}, {{university}}, {{address}}, {{recipient_count}}, {{sent_count}}, {{failed_count}}.',
+  1
+);
+
+-- Placeholder for the message a visitor can send to the leadership of a
+-- school that isn't in the list yet. Replace subject/body with your real
+-- copy -- the visitor cannot edit it, so this text is exactly what goes
+-- out over their name. Editable at /admin/ like the other two.
+INSERT INTO email_templates (name, type, subject, body, active) VALUES (
+  'Default Unlisted School Template',
+  'unlisted_school',
+  'A message regarding {{school}}',
+  '[PLACEHOLDER -- replace this with your organization''s real message.]\n\nDear {{recipient_email}},\n\n[Write the message that a supporter of {{school}} will send to its leadership here.]\n\nAvailable placeholders: {{school}}, {{sender_email}}, {{recipient_email}}.',
   1
 );
 
